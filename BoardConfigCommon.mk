@@ -1,3 +1,4 @@
+
 #
 # Copyright (C) 2013 The CyanogenMod Project
 #
@@ -71,7 +72,7 @@ USE_OPENGL_RENDERER := true
 TARGET_USES_ION := true
 TARGET_USES_OVERLAY := true
 TARGET_USES_C2D_COMPOSITION := true
-
+DEVICE_RESOLUTION := 1080x1920
 OVERRIDE_RS_DRIVER := libRSDriver_adreno.so
 
 #BOARD_USES_QCOM_HARDWARE := true
