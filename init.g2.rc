@@ -3,6 +3,7 @@ import init.g2.usb.rc
 on early-init
     mount debugfs debugfs /sys/kernel/debug
     write /sys/class/leds/lcd-backlight/brightness 150
+    chown system system /sys/kernel/debug/kgsl/proc
 
 on init
     chmod 0701 /mnt/media_rw
@@ -42,7 +43,7 @@ on init
 
     # Prevents permission denied error for telephony
     chmod 0644 /proc/cmdline
-
+ 
 on fs
     mount_all ./fstab.g2
     write /sys/kernel/boot_adsp/boot 1
@@ -73,19 +74,23 @@ on boot
     chmod 0660 /dev/smd0
     chown system system /dev/smd0
 
+    # Camera Recording
+    mkdir /dev/video
+    symlink /dev/video32 /dev/video/venus_dec
+    symlink /dev/video33 /dev/video/venus_enc
+
     chmod 0444 /sys/devices/platform/msm_hsusb/gadget/usb_state
 
     # create symlink for fb1 as HDMI
     symlink /dev/graphics/fb1 /dev/graphics/hdmi
 
-    # Remove write permissions to video related nodes
+    # setup permissions for fb1 related nodes
+    chown system graphics /sys/class/graphics/fb1/hpd
+    chown system graphics /sys/class/graphics/fb1/vendor_name
+    chown system graphics /sys/class/graphics/fb1/product_description
     chmod 0664 /sys/devices/virtual/graphics/fb1/hpd
-    chmod 0664 /sys/devices/virtual/graphics/fb1/video_mode
-    chmod 0664 /sys/devices/virtual/graphics/fb1/format_3d
-
-    # Change owner and group for media server and surface flinger
-    chown system system /sys/devices/virtual/graphics/fb1/format_3d
-    chown system system /sys/devices/virtual/graphics/fb1/hpd
+    chmod 0664 /sys/devices/virtual/graphics/fb1/vendor_name
+    chmod 0664 /sys/devices/virtual/graphics/fb1/product_description
 
     #For bridgemgr daemon to inform the USB driver of the correct transport
     chown radio radio /sys/class/android_usb/f_rmnet_smd_sdio/transport
@@ -156,12 +161,6 @@ on boot
 on post-fs-data
     mkdir /data/media 0770 media_rw media_rw
 
-    # wifi
-    chown wifi system /persist/wifi
-
-    # bluetooth
-    mkdir /data/misc/bluetooth 0770 bluetooth bluetooth
-
     # Create the directories used by the Wireless subsystem
     mkdir /data/misc/wifi 0770 wifi wifi
     mkdir /data/misc/wifi/sockets 0770 wifi wifi
@@ -220,10 +219,6 @@ on post-fs-data
 
     rm /data/local/tmp/adreno_config.txt
 
-    # communicate with mpdecision and thermald
-    mkdir /dev/socket/mpdecision 0770 system system
-    chmod 2770 /dev/socket/mpdecision
-
     # time_daemon storage
     mkdir /data/time/ 0700 system system
 
@@ -242,12 +237,10 @@ on post-fs-data
     write /sys/module/pm_8x60/modes/cpu1/retention/idle_enabled 0
     write /sys/module/pm_8x60/modes/cpu2/retention/idle_enabled 0
     write /sys/module/pm_8x60/modes/cpu3/retention/idle_enabled 0
-
     write /sys/module/msm_thermal/core_control/enabled 0
     write /sys/devices/system/cpu/cpu1/online 1
     write /sys/devices/system/cpu/cpu2/online 1
     write /sys/devices/system/cpu/cpu3/online 1
-
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "ondemand"
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "ondemand"
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor "ondemand"
@@ -256,8 +249,8 @@ on post-fs-data
     write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold 90
     write /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy 1
     write /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor 4
-    write /sys/devices/system/cpu/cpufreq/ondemand/down_differential 3
-    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold_multi_core 80
+    write /sys/devices/system/cpu/cpufreq/ondemand/down_differential 10
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold_multi_core 70
     write /sys/devices/system/cpu/cpufreq/ondemand/down_differential_multi_core 3
     write /sys/devices/system/cpu/cpufreq/ondemand/optimal_freq 960000
     write /sys/devices/system/cpu/cpufreq/ondemand/sync_freq 960000
@@ -266,24 +259,16 @@ on post-fs-data
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq 300000
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq 300000
     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq 300000
-    chown system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
-    chown system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
     write /sys/devices/system/cpu/cpufreq/ondemand/middle_grid_step 7
     write /sys/devices/system/cpu/cpufreq/ondemand/middle_grid_load 40
     write /sys/devices/system/cpu/cpufreq/ondemand/high_grid_step 14
     write /sys/devices/system/cpu/cpufreq/ondemand/high_grid_load 50
-    write /sys/module/msm_thermal/core_control/enabled 1
     chown root system /sys/devices/system/cpu/mfreq
     chmod 0220 /sys/devices/system/cpu/mfreq
-    chown root.system /sys/devices/system/cpu/cpu1/online
-    chown root.system /sys/devices/system/cpu/cpu2/online
-    chown root.system /sys/devices/system/cpu/cpu3/online
-    chmod 664 /sys/devices/system/cpu/cpu1/online
-    chmod 664 /sys/devices/system/cpu/cpu2/online
-    chmod 664 /sys/devices/system/cpu/cpu3/online
+    write /sys/module/msm_thermal/core_control/enabled 1
     write /dev/cpuctl/apps/cpu.notify_on_migrate 1
 
-    chown system system /sys/devices/virtual/input/lge_touch/touch_gesture
+    write /sys/devices/virtual/input/lge_touch/touch_gesture 1
     chown root system /sys/devices/platform/tspdrv/nforce_timed
     chown root system /sys/devices/platform/kcal_ctrl.0/kcal
     chown root system /sys/devices/platform/kcal_ctrl.0/kcal_ctrl
@@ -292,14 +277,6 @@ on post-fs-data
     chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_ctrl
 
 on charger
-    # Booting modem
-    wait /dev/block/platform/msm_sdcc.1/by-name/modem
-    mount vfat /dev/block/platform/msm_sdcc.1/by-name/modem /firmware ro shortname=lower,uid=1000,gid=1000,dmask=227,fmask=337
-    wait /dev/block/platform/msm_sdcc.1/by-name/system
-    mount ext4 /dev/block/platform/msm_sdcc.1/by-name/system /system ro barrier=1
-    start rmt_storage
-    start irsc_util
-
     # Enable Power modes and set the CPU Freq Sampling rates
     write /sys/module/lpm_resources/enable_low_power/l2 2
     write /sys/module/lpm_resources/enable_low_power/pxo 1
@@ -309,6 +286,20 @@ on charger
     write /sys/module/pm_8x60/modes/cpu1/power_collapse/suspend_enabled 1
     write /sys/module/pm_8x60/modes/cpu2/power_collapse/suspend_enabled 1
     write /sys/module/pm_8x60/modes/cpu3/power_collapse/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/power_collapse/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/power_collapse/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/power_collapse/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu2/power_collapse/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu3/power_collapse/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/power_collapse/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/power_collapse/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu2/power_collapse/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu3/power_collapse/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu2/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu3/retention/idle_enabled 1
+
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "powersave"
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "powersave"
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor "powersave"
@@ -382,9 +373,6 @@ service charger /charger
 service sdcard /system/bin/sdcard /data/media /mnt/shell/emulated 1023 1023
     class late_start
 
-service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
-    class main
-
 service qcamerasvr /system/bin/mm-qcamera-daemon
     class late_start
     user camera
@@ -398,11 +386,6 @@ service qseecomd /system/bin/qseecomd
 service cnd /system/bin/cnd
     class late_start
     socket cnd stream 660 root inet
-
-service thermal-engine /system/bin/thermal-engine --time=20
-   class late_start
-   user root
-   group root
 
 service irsc_util /system/bin/irsc_util "/etc/sec_config"
     class main
@@ -458,18 +441,3 @@ service time_daemon /system/bin/time_daemon
 service fuse_usb /system/bin/sdcard -u 1023 -g 1023 /mnt/media_rw/usb /storage/usb
     class late_start
     disabled
-
-service qrngd /system/bin/qrngd -f
-    class main
-    user root
-    group root
-
-service qrngp /system/bin/qrngp
-    class main
-    user root
-    group root
-    oneshot
-    disabled
-
-on property:sys.boot_completed=1
-    start qrngp
